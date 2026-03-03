@@ -195,45 +195,29 @@ agent := opencode.New(
 
 ```go
 type Executor interface {
-	Run(ctx context.Context, req ExecRequest) (*ExecResult, error)
+	// Exec starts a command and returns a Process handle for streaming I/O.
+	// args[0] is the binary name; args[1:] are arguments.
+	Exec(ctx context.Context, args []string, env map[string]string, workDir string) (*Process, error)
 	IsHealthy(ctx context.Context) bool
 	Close(ctx context.Context) error
+}
+
+// Process is the handle returned by Executor.Exec.
+type Process struct {
+	Stdout io.ReadCloser                    // subprocess stdout (NDJSON/SSE stream)
+	Stdin  io.WriteCloser                   // subprocess stdin; nil when not writable
+	Wait   func() (exitCode int, err error) // blocks until process exits
+	Stderr *bytes.Buffer                    // captured stderr; read after Wait() returns
 }
 ```
 
 ### LocalExecutor
 
-`xagent.NewLocalExecutor()` — the default executor. Runs CLI binaries as child processes using `os/exec`. Zero external dependencies.
+`xagent.NewLocalExecutor()` — the built-in default executor. Runs CLI binaries as child processes using `os/exec`. Zero external dependencies.
 
-### DockerExecutor (Demo)
+### Custom Executors
 
-`demo/docker_xgopilot/docker` — demo-only executor implementation that runs each CLI invocation via `docker exec` inside a long-lived container. Container lifecycle (start, stop, remove) is managed automatically.
-
-```go
-import "github.com/goplus/xagent/demo/docker_xgopilot/docker"
-
-exec, err := docker.New(
-	docker.WithImage("goplusorg/codeagent:v0.9.6.1"),
-	docker.WithContainerName("my-agent"),
-	docker.WithUser("codeagent"),
-	docker.WithWorkDir("/workspace"),
-	docker.WithMounts([]docker.Mount{
-		{Host: "/host/project", Container: "/workspace"},
-	}),
-	docker.WithPathRemap(map[string]string{"/host/project": "/workspace"}),
-	docker.WithInit(true),
-	docker.WithAutoRemove(true),
-	docker.WithLogger(slog.Default()),
-)
-```
-
-No external Go dependencies — requires only the `docker` CLI on `PATH`.
-
-**Multi-turn with DockerExecutor:** each `docker exec` call runs in a fresh subprocess, so process-level state is not retained between invocations. Claude session continuity relies on passing `--resume <session-id>` whenever a session ID is available. This behavior is not executor-conditional, and stdin is closed after each invocation for both `LocalExecutor` and `DockerExecutor`.
-
-### E2BExecutor
-
-`github.com/goplus/xagent/executor/e2b` — runs commands inside [E2B](https://e2b.dev) cloud sandboxes. Ships as a separate Go module with its own `go.mod`.
+Any type implementing the `Executor` interface can be used to run agent CLI binaries in a custom environment — for example, inside a Docker container, a cloud sandbox, or over SSH. Pass your implementation via the `WithExecutor()` option when constructing an adapter. See `demo/executor_docker` for a Docker-based reference implementation.
 
 ## SessionManager
 
@@ -272,16 +256,16 @@ type Event interface {
 }
 ```
 
-| Event type          | Kind value | Description                                                                         | Adapters that emit it    |
-| ------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------------------ |
-| `InitEvent`         | 1          | Session started; carries `SessionID`, `Model`, `ToolNames`, `CLIVersion`            | Claude, Gemini, OpenCode |
-| `TextEvent`         | 2          | Incremental text delta from the model (`Delta string`)                              | All                      |
-| `ThinkingEvent`     | 3          | Extended thinking delta (`Delta string`)                                            | Claude                   |
-| `ToolStartEvent`    | 4          | Tool invocation started; carries `ToolName`, `CallID`, `Input []byte`               | Claude, Gemini, OpenCode |
-| `ToolEndEvent`      | 5          | Tool invocation completed; carries `Output string`, `IsError bool`                  | Claude, Gemini, OpenCode |
-| `TurnCompleteEvent` | 6          | Model turn finished; carries `InputTokens`, `OutputTokens`, `CostUSD`, `StopReason` | All                      |
-| `ErrorEvent`        | 7          | Backend error; `Fatal=true` means the stream is terminated                          | All                      |
-| `RawEvent`          | 99         | Backend-specific event with no standard mapping; raw JSON in `RawJSON []byte`       | All                      |
+| Event type          | Kind value | Description                                                                                  | Adapters that emit it    |
+| ------------------- | ---------- | -------------------------------------------------------------------------------------------- | ------------------------ |
+| `InitEvent`         | 1          | Session started; carries `SessionID`, `Model`, `ToolNames`, `CLIVersion`                     | Claude, Gemini, OpenCode |
+| `TextEvent`         | 2          | Incremental text delta from the model (`Delta string`)                                       | All                      |
+| `ThinkingEvent`     | 3          | Extended thinking delta (`Delta string`)                                                     | Claude                   |
+| `ToolStartEvent`    | 4          | Tool invocation started; carries `ToolName`, `CallID`, `Input []byte`, `Source`, `MCPServer` | Claude, Gemini, OpenCode |
+| `ToolEndEvent`      | 5          | Tool invocation completed; carries `ToolName`, `CallID`, `Output string`, `IsError bool`     | Claude, Gemini, OpenCode |
+| `TurnCompleteEvent` | 6          | Model turn finished; carries `InputTokens`, `OutputTokens`, `CostUSD`, `StopReason`          | All                      |
+| `ErrorEvent`        | 7          | Backend error; `Fatal=true` means the stream is terminated                                   | All                      |
+| `RawEvent`          | 99         | Backend-specific event with no standard mapping; raw JSON in `RawJSON []byte`                | All                      |
 
 Consume events with a type switch:
 
@@ -318,7 +302,6 @@ Helper functions `xagent.CollectText` and `xagent.CollectResult` handle the comm
   - OpenAI Codex CLI: https://github.com/openai/codex
   - Gemini CLI: https://github.com/google-gemini/gemini-cli
   - OpenCode: https://github.com/sst/opencode
-- DockerExecutor requires `docker` on `PATH` and a running Docker daemon
 
 ## License
 

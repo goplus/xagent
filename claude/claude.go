@@ -108,14 +108,12 @@ func (a *Agent) Name() string {
 	return "claude"
 }
 
+// Capabilities returns the feature flags supported by claude CLI 2.1.x.
 func (a *Agent) Capabilities() xagent.Capabilities {
 	return xagent.Capabilities{
-		Streaming:        true,
-		SessionResume:    true,
-		ForkSession:      true,
-		Daemon:           false,
-		StructuredOutput: true,
-		ExtendedThinking: true,
+		Streaming:     true,
+		SessionResume: true,
+		ForkSession:   true,
 	}
 }
 

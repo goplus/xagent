@@ -59,7 +59,7 @@ func WithBinaryPath(path string) Option { return func(a *Agent) { a.binaryPath =
 func (a *Agent) Name() string { return "opencode" }
 
 func (a *Agent) Capabilities() xagent.Capabilities {
-	return xagent.Capabilities{Streaming: true, SessionResume: true, ForkSession: true, Daemon: true, StructuredOutput: true}
+	return xagent.Capabilities{Streaming: true, SessionResume: true, ForkSession: true}
 }
 
 func (a *Agent) Validate(ctx context.Context) error {

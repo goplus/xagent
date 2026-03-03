@@ -41,12 +41,4 @@ type Capabilities struct {
 	SessionResume bool
 	// ForkSession indicates that the agent supports forking sessions via SessionConfig.ForkSession.
 	ForkSession bool
-	// Daemon indicates that the agent runs as a long-lived background server process.
-	Daemon bool
-	// StructuredOutput indicates that the agent supports JSON output schemas.
-	StructuredOutput bool
-	// MultiModal indicates that the agent accepts non-text inputs (e.g. images).
-	MultiModal bool
-	// ExtendedThinking indicates that the agent supports explicit reasoning / thinking traces.
-	ExtendedThinking bool
 }

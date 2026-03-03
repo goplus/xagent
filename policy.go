@@ -25,15 +25,3 @@ const (
 	// PermAutoApprove grants the agent full autonomy to execute any tool without confirmation.
 	PermAutoApprove PermissionPolicy = "auto-approve"
 )
-
-// ReasoningEffort controls how much compute the agent invests in explicit reasoning
-// before producing a response. Only effective on backends that support extended thinking.
-type ReasoningEffort string
-
-const (
-	ReasoningNone   ReasoningEffort = "none"   // no extended thinking
-	ReasoningLow    ReasoningEffort = "low"    // minimal thinking budget
-	ReasoningMedium ReasoningEffort = "medium" // balanced thinking budget
-	ReasoningHigh   ReasoningEffort = "high"   // high thinking budget
-	ReasoningXHigh  ReasoningEffort = "xhigh"  // maximum thinking budget
-)

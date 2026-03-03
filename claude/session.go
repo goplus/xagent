@@ -64,8 +64,48 @@ func (s *session) Send(ctx context.Context, prompt string) (xagent.Stream, error
 		proc.Stdin = nil
 	}
 
+	// statefulMapLine suppresses the duplicate TextEvent that claude writes into the
+	// final 'result' line when text was already delivered via streaming 'assistant'
+	// events (normal mode). In plan mode no assistant TextEvents are emitted, so the
+	// 'result' line text is kept as the sole source.
+	var assistantTextSeen bool
+	statefulMapLine := func(line []byte) []xagent.Event {
+		events := mapLine(line)
+
+		// Single pass: detect result line and text events simultaneously.
+		var isResultLine, hasText bool
+		for _, e := range events {
+			switch e.(type) {
+			case xagent.TurnCompleteEvent:
+				isResultLine = true
+			case xagent.TextEvent:
+				hasText = true
+			}
+		}
+
+		if !isResultLine {
+			if hasText {
+				assistantTextSeen = true
+			}
+			return events
+		}
+
+		// result line: drop its TextEvent only when assistant streaming already delivered text.
+		if !assistantTextSeen {
+			return events
+		}
+		out := make([]xagent.Event, 0, len(events))
+		for _, e := range events {
+			if _, ok := e.(xagent.TextEvent); ok {
+				continue // suppress duplicate
+			}
+			out = append(out, e)
+		}
+		return out
+	}
+
 	scanner := ndjson.NewScanner(proc.Stdout)
-	return xagent.NewProcessStream(proc, scanner, mapLine,
+	return xagent.NewProcessStream(proc, scanner, statefulMapLine,
 		xagent.WithOnInit(func(init xagent.InitEvent) {
 			if init.SessionID != "" {
 				s.mu.Lock()

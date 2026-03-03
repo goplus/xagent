@@ -51,14 +51,6 @@ func buildArgs(cfg xagent.SessionConfig, prompt string, resumeID string, fork bo
 		args = append(args, "--max-turns", strconv.Itoa(cfg.MaxTurns))
 	}
 
-	if len(cfg.OutputSchema) > 0 {
-		args = append(args, "--output-schema", string(cfg.OutputSchema))
-	}
-
-	if cfg.ReasoningEffort != "" && cfg.ReasoningEffort != xagent.ReasoningNone {
-		args = append(args, "--reasoning-effort", string(cfg.ReasoningEffort))
-	}
-
 	if cfg.MCPConfig != nil && len(cfg.MCPConfig.Servers) > 0 {
 		mcpJSON, err := json.Marshal(buildMCPConfigJSON(cfg.MCPConfig))
 		if err == nil {

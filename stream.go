@@ -62,7 +62,7 @@ type Usage struct {
 }
 
 // CollectText drains s to completion and returns the concatenated text content.
-// It closes the stream before returning.
+// It closes the stream before returning. A fatal ErrorEvent is returned as an *AgentError.
 func CollectText(ctx context.Context, s Stream) (string, error) {
 	defer s.Close()
 	var sb strings.Builder
@@ -70,6 +70,10 @@ func CollectText(ctx context.Context, s Stream) (string, error) {
 		switch e := s.Event().(type) {
 		case TextEvent:
 			sb.WriteString(e.Delta)
+		case ErrorEvent:
+			if e.Fatal {
+				return "", &AgentError{Code: e.Code, Message: e.Message}
+			}
 		}
 	}
 	return sb.String(), s.Err()
@@ -94,6 +98,10 @@ func CollectResult(ctx context.Context, s Stream) (*TurnResult, error) {
 			out.StopReason = e.StopReason
 			if e.Duration > 0 {
 				out.Duration = e.Duration
+			}
+		case ErrorEvent:
+			if e.Fatal {
+				return nil, &AgentError{Code: e.Code, Message: e.Message}
 			}
 		}
 	}

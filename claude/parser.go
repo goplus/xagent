@@ -114,13 +114,18 @@ func mapEvent(obj map[string]any, raw []byte) []xagent.Event {
 		}
 	case "result":
 		usage, _ := obj["usage"].(map[string]any)
-		return []xagent.Event{xagent.TurnCompleteEvent{
+		out := make([]xagent.Event, 0, 2)
+		if text := toString(obj["result"]); text != "" {
+			out = append(out, xagent.TextEvent{Delta: text, Timestamp: now})
+		}
+		out = append(out, xagent.TurnCompleteEvent{
 			InputTokens:  toInt(usage["input_tokens"]),
 			OutputTokens: toInt(usage["output_tokens"]),
 			CostUSD:      toFloat(obj["total_cost_usd"]),
 			StopReason:   toString(obj["stop_reason"]),
 			Timestamp:    now,
-		}}
+		})
+		return out
 	case "tool_result":
 		return []xagent.Event{xagent.ToolEndEvent{
 			ToolName:  toString(obj["name"]),

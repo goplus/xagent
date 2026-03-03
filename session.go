@@ -54,10 +54,6 @@ type SessionConfig struct {
 	Env map[string]string
 	// MCPConfig configures Model Context Protocol servers that the agent may call.
 	MCPConfig *MCPConfig
-	// ReasoningEffort controls the depth of reasoning / thinking for supported backends.
-	ReasoningEffort ReasoningEffort
-	// OutputSchema is an optional JSON schema ([]byte) constraining structured output.
-	OutputSchema []byte
 	// ExtraBinaryFlags appends raw flags to the agent CLI invocation.
 	ExtraBinaryFlags []string
 }

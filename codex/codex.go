@@ -66,7 +66,7 @@ func WithBinaryPath(path string) Option {
 func (a *Agent) Name() string { return "codex" }
 
 func (a *Agent) Capabilities() xagent.Capabilities {
-	return xagent.Capabilities{Streaming: true, SessionResume: true, Daemon: true, StructuredOutput: true}
+	return xagent.Capabilities{Streaming: true, SessionResume: true}
 }
 
 func (a *Agent) Validate(ctx context.Context) error {
